@@ -44,6 +44,11 @@ export type Item = {
   shortcut?: string;
   category?: string;
   aliases?: string[];
+  /**
+   * Raycast-style keyword. Typing "<keyword> <text>" shows only this item and
+   * substitutes the shell-quoted text for `{query}` in its action.
+   */
+  keyword?: string;
   action: Action;
   /** Arbitrary payload for custom renderItem implementations. */
   data?: unknown;

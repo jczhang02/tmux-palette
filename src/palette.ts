@@ -1,6 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { dispatchToFile } from "./dispatch";
 import { defaultFilter } from "./fuzzy";
+import { bindKeyword, matchKeyword } from "./keyword";
 import {
   buildRows,
   composeFooter,
@@ -194,6 +195,8 @@ export async function runPalette(
   function visible(): Item[] {
     const needle = filter.trim();
     if (!needle) return items;
+    const keywordHit = matchKeyword(items, filter);
+    if (keywordHit) return [keywordHit];
     if (currentDef.filter) return currentDef.filter(items, needle);
     return defaultFilter(items, needle);
   }
@@ -369,6 +372,7 @@ export async function runPalette(
   }
 
   async function activate(item: Item): Promise<void> {
+    item = bindKeyword(item);
     if ("palette" in item.action && loader) {
       await navigateTo(item.action.palette);
       return;
