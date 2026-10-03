@@ -17,6 +17,7 @@ import {
   type RowAction,
 } from "./render";
 import { cursorTint, makeColors, popupFlags, resolveActiveTheme } from "./theme";
+import { displayWidth, isTextInput } from "./text";
 import type { ActionContext, Item, PaletteDef, PopupAction } from "./types";
 import { userAliases, userNavigation, userShortcuts, userSizing } from "./userConfig";
 
@@ -283,9 +284,11 @@ export async function runPalette(
 
     // Position the real terminal cursor on the search row so it blinks
     // where the user is typing. Column math matches composeSearch:
-    // padX panel cells + ▌ + space, then filter chars.
+    // padX panel cells + ▌ + space, then the filter's display width (CJK is
+    // two cells), so an input method's preedit appears at the cursor.
     const searchRow = bordered ? 2 : 3;
-    const cursorCol = Math.min(padX + 3 + filterCursor, padX + 3 + Math.max(0, bodyWidth - 2));
+    const typed = displayWidth(filter.slice(0, filterCursor));
+    const cursorCol = Math.min(padX + 3 + typed, padX + 3 + Math.max(0, bodyWidth - 2));
 
     // Synchronized output + cursor-home (no clear) so the frame swaps
     // atomically without a blank flash, even when arrow keys repeat fast.
@@ -586,11 +589,12 @@ export async function runPalette(
       if (!deleteSelection()) {
         filter = filter.slice(0, filterCursor);
       }
-    } else if (key.length === 1 && key >= " ") {
-      // Typing replaces selection (if any), then inserts.
+    } else if (isTextInput(key)) {
+      // Typing replaces selection (if any), then inserts. IME commits and
+      // pastes arrive as one multi-character chunk.
       deleteSelection();
       filter = filter.slice(0, filterCursor) + key + filter.slice(filterCursor);
-      filterCursor++;
+      filterCursor += key.length;
     } else {
       return false;
     }

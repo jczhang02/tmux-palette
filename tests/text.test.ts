@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { autoAlias, charWidth, displayWidth, truncate } from "../src/text";
+import { autoAlias, charWidth, displayWidth, truncate, isTextInput } from "../src/text";
 
 describe("display width", () => {
   test("counts ASCII and wide glyphs", () => {
@@ -34,5 +34,22 @@ describe("autoAlias", () => {
 
   test("ignores single-word titles", () => {
     expect(autoAlias("Detach")).toBeNull();
+  });
+});
+
+describe("isTextInput", () => {
+  test("accepts single keys and multi-character IME commits", () => {
+    expect(isTextInput("a")).toBe(true);
+    expect(isTextInput(" ")).toBe(true);
+    expect(isTextInput("放弃")).toBe(true);
+    expect(isTextInput("kd 人工智能")).toBe(true);
+  });
+
+  test("rejects control keys and escape sequences", () => {
+    expect(isTextInput("")).toBe(false);
+    expect(isTextInput("\r")).toBe(false);
+    expect(isTextInput("\x7f")).toBe(false);
+    expect(isTextInput("\x1b[D")).toBe(false);
+    expect(isTextInput("\x1bb")).toBe(false);
   });
 });
