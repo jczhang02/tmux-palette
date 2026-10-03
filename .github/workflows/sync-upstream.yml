@@ -1,0 +1,49 @@
+name: Sync upstream
+
+# Fork-only: merge eduwass/tmux-palette main into this fork's main, keeping
+# the local patches on top. A merge (not a rebase) keeps history linear for
+# TPM's plain `git pull`. A conflict or failing test fails the run (GitHub
+# emails the owner) and pushes nothing.
+
+on:
+  schedule:
+    - cron: "23 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: sync-upstream
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge upstream main
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/eduwass/tmux-palette.git
+          git fetch upstream main
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Already up to date with upstream."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git merge --no-edit upstream/main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - uses: oven-sh/setup-bun@v2
+        if: steps.merge.outputs.changed == 'true'
+      - name: Test the merge
+        if: steps.merge.outputs.changed == 'true'
+        run: |
+          bun install --frozen-lockfile
+          bun test
+          bun run typecheck
+      - name: Push
+        if: steps.merge.outputs.changed == 'true'
+        run: git push origin HEAD:main
